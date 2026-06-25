@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #f4f6f8;
+  --color-foreground: #1f2937;
+  --color-muted: #eef1f5;
+  --color-muted-foreground: #6b7280;
+  --color-border: #e2e8f0;
+  --color-primary: #2b59c3;
+  --color-primary-hover: #2449a8;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #e8eef8;
+  --color-success: #16a34a;
+  --color-danger: #dc2626;
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+  --radius-card: 1rem;
+  --radius-button: 9999px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Prevent iOS zoom on input focus (requires 16px+ font) */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+@media (min-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: inherit;
+  }
+}
