@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { BRANDS } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { applyReloadlyBalanceAvailability } from "@/lib/reloadly-balance";
@@ -105,7 +106,14 @@ export default async function BrandProductsPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
-      <h1 className="text-2xl sm:text-3xl font-bold">{brand.name}</h1>
+      <Link
+        href="/products"
+        className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Бүх бүтээгдэхүүн
+      </Link>
+
+      <h1 className="mt-2 text-2xl sm:text-3xl font-bold">{brand.name}</h1>
       <p className="mt-2 text-muted-foreground">{brand.description}</p>
 
       {products.length === 0 ? (

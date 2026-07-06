@@ -44,6 +44,10 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Цуцлагдсан",
 };
 
+function formatPercent(percent: number) {
+  return `${Number.isInteger(percent) ? percent : percent.toFixed(2)}%`;
+}
+
 export default function OrderPage({
   params,
 }: {
@@ -134,10 +138,12 @@ export default function OrderPage({
         ← Бүтээгдэхүүн
       </Link>
 
-      <h1 className="text-xl sm:text-2xl font-bold mt-2 break-all">
-        Захиалга #{order.orderNumber}
+      <h1 className="text-xl sm:text-2xl font-bold mt-2 break-words">
+        {order.product?.name ?? "Захиалга"}
       </h1>
-      <p className="mt-1 text-muted-foreground">{order.product?.name}</p>
+      <p className="mt-1 text-muted-foreground break-all">
+        Захиалга #{order.orderNumber}
+      </p>
       <p className="mt-2 text-sm text-muted-foreground">
         Код дэлгэц дээр гарах тул хуудас бүү хаагаарай
       </p>
@@ -156,7 +162,8 @@ export default function OrderPage({
         {order.discountMnt > 0 && (
           <div className="flex justify-between items-center gap-3">
             <span className="text-sm text-muted-foreground">
-              Хөнгөлөлт {order.discountCode ? `(${order.discountCode})` : ""}
+              Хөнгөлөлт{" "}
+              {order.discountPercent ? `(${formatPercent(order.discountPercent)})` : ""}
             </span>
             <span className="font-medium text-success">
               -{formatMnt(order.discountMnt)}
