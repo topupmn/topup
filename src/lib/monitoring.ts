@@ -83,7 +83,7 @@ export function formatStatusMessage(checks: MonitorCheck[]) {
   });
 
   return [
-    "topup.mn hourly status",
+    "topup.mn daily status",
     `Overall: ${allOk ? "OK" : "ATTENTION"}`,
     `Time: ${new Date().toISOString()}`,
     "",

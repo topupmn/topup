@@ -66,12 +66,12 @@ Open [http://localhost:3000](http://localhost:3000).
 | `ALLOW_TEST_PAYMENT` | Keep `false` in production |
 | `NEXT_PUBLIC_ENABLE_TEST_PAYMENT` | Keep `false` in production |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | SMS provider credentials, if Twilio is used |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Telegram destination for hourly monitoring |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Telegram destination for daily monitoring |
 | `MONITORING_CRON_SECRET` | Optional bearer token for manually testing the monitoring route |
 
 ## Monitoring
 
-Vercel runs `/api/cron/hourly-status` every hour through `vercel.json`.
+Vercel runs `/api/cron/hourly-status` once per day at 10:00 AM Ulaanbaatar time through `vercel.json`.
 The monitor checks the public website, database, QPay auth, and Reloadly wallet
 balance, then sends a plain-text status report to Telegram.
 
