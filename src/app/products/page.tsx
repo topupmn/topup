@@ -1,6 +1,8 @@
 import { getBrandsWithImages } from "@/lib/brands";
 import { BrandCard } from "@/components/products/brand-card";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProductsPage() {
   const brands = await getBrandsWithImages();
 

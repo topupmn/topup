@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { applyReloadlyBalanceAvailability } from "@/lib/reloadly-balance";
 
 export async function GET(request: Request) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
       orderBy: { priceMnt: "asc" },
     });
 
-    return NextResponse.json(products);
+    return NextResponse.json(await applyReloadlyBalanceAvailability(products));
   } catch {
     return NextResponse.json(
       { error: "Бүтээгдэхүүн авахад алдаа гарлаа" },

@@ -15,6 +15,8 @@ function getReloadlyBaseUrl() {
 }
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
+let cachedBalance: { balance: ReloadlyAccountBalance; expiresAt: number } | null =
+  null;
 
 export async function getReloadlyToken(): Promise<string> {
   if (cachedToken && cachedToken.expiresAt > Date.now()) {
@@ -65,6 +67,16 @@ export interface ReloadlyProduct {
   logoUrls: string[];
 }
 
+export interface ReloadlyAccountBalance {
+  balance: number;
+  frozenBalance: number | null;
+  currencyCode: string;
+  currencyName: string;
+  updatedAt: string;
+  lowBalanceThreshold: number;
+  maxLowBalanceThreshold: number;
+}
+
 export function getProductDenominations(product: ReloadlyProduct): number[] {
   if (product.fixedRecipientDenominations?.length) {
     return product.fixedRecipientDenominations;
@@ -103,6 +115,30 @@ export async function listReloadlyProducts(
 
   const data = await response.json();
   return data.content ?? [];
+}
+
+export async function getReloadlyAccountBalance(): Promise<ReloadlyAccountBalance> {
+  if (cachedBalance && cachedBalance.expiresAt > Date.now()) {
+    return cachedBalance.balance;
+  }
+
+  const token = await getReloadlyToken();
+  const response = await fetch(`${getReloadlyBaseUrl()}/accounts/balance`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get Reloadly balance: ${error}`);
+  }
+
+  const balance = await response.json();
+  cachedBalance = {
+    balance,
+    expiresAt: Date.now() + 60 * 1000,
+  };
+
+  return balance;
 }
 
 export interface ReloadlyOrderRequest {

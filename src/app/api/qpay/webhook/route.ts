@@ -1,47 +1,70 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { checkQPayPayment, isQPayPaymentComplete } from "@/lib/qpay";
-import { fulfillOrder } from "@/lib/fulfillment";
+import { processQPayPaymentReference } from "@/lib/qpay-callback";
+
+function getReferenceFromUrl(request: Request): string | null {
+  const { searchParams } = new URL(request.url);
+  return (
+    searchParams.get("sender_invoice_no") ??
+    searchParams.get("invoiceid") ??
+    searchParams.get("invoiceId") ??
+    searchParams.get("invoice_id") ??
+    searchParams.get("object_id") ??
+    searchParams.get("orderNumber") ??
+    searchParams.get("order_number")
+  );
+}
+
+export async function GET(request: Request) {
+  try {
+    const reference = getReferenceFromUrl(request);
+
+    if (!reference) {
+      return new NextResponse("Missing invoice reference", { status: 400 });
+    }
+
+    const result = await processQPayPaymentReference(reference);
+
+    if (result.status === "not_found") {
+      return new NextResponse("Payment not found", { status: 404 });
+    }
+
+    return new NextResponse("SUCCESS", { status: 200 });
+  } catch (error) {
+    console.error("QPay callback error:", error);
+    return new NextResponse("Webhook processing failed", { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const invoiceId = body.invoice_id ?? body.object_id;
+    const invoiceId =
+      body.invoice_id ??
+      body.object_id ??
+      body.sender_invoice_no ??
+      body.invoiceid;
 
     if (!invoiceId) {
       return NextResponse.json({ error: "Missing invoice_id" }, { status: 400 });
     }
 
-    const payment = await prisma.payment.findUnique({
-      where: { qpayInvoiceId: invoiceId },
-      include: { order: true },
-    });
+    const result = await processQPayPaymentReference(invoiceId);
 
-    if (!payment) {
+    if (result.status === "not_found") {
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
-    if (payment.status === "PAID") {
+    if (result.status === "already_processed") {
       return NextResponse.json({ status: "already_processed" });
     }
 
-    const checkResult = await checkQPayPayment(invoiceId);
-
-    if (!isQPayPaymentComplete(checkResult)) {
-      return NextResponse.json({ status: "not_paid" });
+    if (result.status === "not_paid") {
+      return NextResponse.json({
+        status: "not_paid",
+        reason: result.reason,
+        paidAmountMnt: result.paidAmountMnt,
+      });
     }
-
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: "PAID", paidAt: new Date() },
-    });
-
-    await prisma.order.update({
-      where: { id: payment.orderId },
-      data: { status: "PAID" },
-    });
-
-    await fulfillOrder(payment.orderId);
 
     return NextResponse.json({ status: "success" });
   } catch (error) {

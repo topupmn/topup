@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatMnt } from "@/lib/utils";
 import {
@@ -14,6 +13,10 @@ interface OrderData {
   id: string;
   orderNumber: string;
   status: string;
+  subtotalMnt: number;
+  discountMnt: number;
+  discountCode: string | null;
+  discountPercent: number | null;
   totalMnt: number;
   product: { name: string; nameMn: string | null } | null;
   payment: {
@@ -35,6 +38,7 @@ const STATUS_LABELS: Record<string, string> = {
   PAID: "Төлбөр төлөгдсөн",
   FULFILLING: "Код бэлтгэж байна",
   DELIVERED: "Хүргэгдсэн",
+  FULFILLMENT_FAILED: "Код хүргэлт саатсан",
   FAILED: "Амжилтгүй",
   EXPIRED: "Хугацаа дууссан",
   CANCELLED: "Цуцлагдсан",
@@ -45,15 +49,11 @@ export default function OrderPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { status: authStatus } = useSession();
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const [orderId, setOrderId] = useState<string>("");
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [simulating, setSimulating] = useState(false);
-
-  const testPaymentEnabled =
-    process.env.NEXT_PUBLIC_ENABLE_TEST_PAYMENT === "true";
+  const [checkingTransaction, setCheckingTransaction] = useState(false);
 
   useEffect(() => {
     params.then((p) => setOrderId(p.id));
@@ -61,26 +61,35 @@ export default function OrderPage({
 
   const fetchOrder = useCallback(async () => {
     if (!orderId) return;
-    const res = await fetch(`/api/orders/${orderId}`);
+    const token = searchParams.get("token");
+    const url = token
+      ? `/api/orders/${orderId}?token=${encodeURIComponent(token)}`
+      : `/api/orders/${orderId}`;
+    const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
       setOrder(data);
     }
     setLoading(false);
-  }, [orderId]);
+  }, [orderId, searchParams]);
 
   useEffect(() => {
-    if (authStatus === "unauthenticated") {
-      router.push("/login");
-      return;
+    if (orderId) {
+      const timeout = window.setTimeout(() => {
+        void fetchOrder();
+      }, 0);
+
+      return () => window.clearTimeout(timeout);
     }
-    if (authStatus === "authenticated" && orderId) {
-      fetchOrder();
-    }
-  }, [authStatus, orderId, router, fetchOrder]);
+  }, [orderId, fetchOrder]);
 
   useEffect(() => {
-    if (!order || order.status === "DELIVERED" || order.status === "FAILED") {
+    if (
+      !order ||
+      order.status === "DELIVERED" ||
+      order.status === "FAILED" ||
+      order.status === "FULFILLMENT_FAILED"
+    ) {
       return;
     }
 
@@ -88,25 +97,16 @@ export default function OrderPage({
     return () => clearInterval(interval);
   }, [order, fetchOrder]);
 
-  async function handleSimulatePayment() {
-    if (!orderId) return;
-    setSimulating(true);
+  async function handleCheckTransaction() {
+    setCheckingTransaction(true);
     try {
-      const res = await fetch(`/api/orders/${orderId}/simulate-payment`, {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error ?? "Алдаа гарлаа");
-        return;
-      }
       await fetchOrder();
     } finally {
-      setSimulating(false);
+      setCheckingTransaction(false);
     }
   }
 
-  if (loading || authStatus === "loading") {
+  if (loading) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center text-muted-foreground">
         Ачааллаж байна...
@@ -128,16 +128,19 @@ export default function OrderPage({
   return (
     <div className="mx-auto max-w-lg px-4 py-8 sm:py-12">
       <Link
-        href="/orders"
+        href="/products"
         className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Захиалгууд
+        ← Бүтээгдэхүүн
       </Link>
 
       <h1 className="text-xl sm:text-2xl font-bold mt-2 break-all">
         Захиалга #{order.orderNumber}
       </h1>
       <p className="mt-1 text-muted-foreground">{order.product?.name}</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Код дэлгэц дээр гарах тул хуудас бүү хаагаарай
+      </p>
 
       <div className="mt-6 rounded-xl border border-border p-4 space-y-3">
         <div className="flex justify-between items-start gap-3">
@@ -147,7 +150,21 @@ export default function OrderPage({
           </span>
         </div>
         <div className="flex justify-between items-center gap-3">
-          <span className="text-sm text-muted-foreground">Дүн</span>
+          <span className="text-sm text-muted-foreground">Үндсэн үнэ</span>
+          <span className="font-medium">{formatMnt(order.subtotalMnt)}</span>
+        </div>
+        {order.discountMnt > 0 && (
+          <div className="flex justify-between items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              Хөнгөлөлт {order.discountCode ? `(${order.discountCode})` : ""}
+            </span>
+            <span className="font-medium text-success">
+              -{formatMnt(order.discountMnt)}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between items-center gap-3">
+          <span className="text-sm text-muted-foreground">Төлөх дүн</span>
           <span className="font-bold text-lg">{formatMnt(order.totalMnt)}</span>
         </div>
       </div>
@@ -158,22 +175,9 @@ export default function OrderPage({
             qrImage={order.payment.qrImage}
             bankUrls={order.payment.bankUrls}
             amountMnt={order.totalMnt}
+            checkingTransaction={checkingTransaction}
+            onCheckTransaction={handleCheckTransaction}
           />
-          {testPaymentEnabled && (
-            <div className="mt-6 rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-3">
-                Sandbox туршилт — бодит төлбөргүй
-              </p>
-              <button
-                type="button"
-                onClick={handleSimulatePayment}
-                disabled={simulating}
-                className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50 min-h-11"
-              >
-                {simulating ? "Боловсруулж байна..." : "Төлбөр төлөгдсөн гэж тэмдэглэх"}
-              </button>
-            </div>
-          )}
         </>
       )}
 
@@ -202,7 +206,7 @@ export default function OrderPage({
         </div>
       )}
 
-      {order.status === "FAILED" && (
+      {(order.status === "FAILED" || order.status === "FULFILLMENT_FAILED") && (
         <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 sm:p-6 text-center">
           <p className="text-danger font-medium">
             Захиалга амжилтгүй боллоо. Та дэмжлэгтэй холбогдоно уу.

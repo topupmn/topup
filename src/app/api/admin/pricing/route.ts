@@ -6,6 +6,7 @@ import { isAdminEmail } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { calculatePriceMnt } from "@/lib/pricing";
 import { getPricingConfig, updatePricingSettings } from "@/lib/site-settings";
+import { forbidCrossSiteRequest } from "@/lib/request-security";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -18,6 +19,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  const crossSiteResponse = forbidCrossSiteRequest(request);
+  if (crossSiteResponse) return crossSiteResponse;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email || !isAdminEmail(session.user.email)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

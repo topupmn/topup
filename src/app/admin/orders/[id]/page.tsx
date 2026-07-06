@@ -3,12 +3,16 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatMnt } from "@/lib/utils";
 import { RetryFulfillmentButton } from "@/components/admin/retry-fulfillment-button";
+import { RetrySmsButton } from "@/components/admin/retry-sms-button";
+
+export const dynamic = "force-dynamic";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING_PAYMENT: "Төлбөр хүлээгдэж байна",
   PAID: "Төлөгдсөн",
   FULFILLING: "Код бэлтгэж байна",
   DELIVERED: "Хүргэгдсэн",
+  FULFILLMENT_FAILED: "Код хүргэлт амжилтгүй",
   FAILED: "Амжилтгүй",
   EXPIRED: "Хугацаа дууссан",
   CANCELLED: "Цуцлагдсан",
@@ -35,9 +39,12 @@ export default async function AdminOrderDetailPage({
 
   const canRetry =
     order.payment?.status === "PAID" &&
-    (order.status === "FAILED" ||
+    (order.status === "FULFILLMENT_FAILED" ||
+      order.status === "FAILED" ||
       order.fulfillment?.status === "FAILED" ||
       (order.status === "PAID" && !order.fulfillment));
+  const subtotalMnt =
+    order.subtotalMnt > 0 ? order.subtotalMnt : order.totalMnt + order.discountMnt;
 
   return (
     <div>
@@ -55,9 +62,23 @@ export default async function AdminOrderDetailPage({
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <Section title="Захиалга">
+          <Row
+            label="Захиалгын төлөв"
+            value={STATUS_LABELS[order.status] ?? order.status}
+          />
           <Row label="Бүтээгдэхүүн" value={order.items[0]?.product.name ?? "—"} />
-          <Row label="Имэйл" value={order.email} />
-          <Row label="Утас" value={order.phone ?? "—"} />
+          <Row label="Үндсэн үнэ" value={formatMnt(subtotalMnt)} />
+          {order.discountMnt > 0 && (
+            <Row
+              label="Хөнгөлөлт"
+              value={`-${formatMnt(order.discountMnt)}${
+                order.discountCode ? ` (${order.discountCode})` : ""
+              }`}
+            />
+          )}
+          <Row label="Төлөх дүн" value={formatMnt(order.totalMnt)} />
+          <Row label="Имэйл" value={order.email ?? "—"} />
+          <Row label="Утас" value={order.phone} />
           <Row
             label="Үүсгэсэн"
             value={new Date(order.createdAt).toLocaleString("mn-MN")}
@@ -65,8 +86,8 @@ export default async function AdminOrderDetailPage({
         </Section>
 
         <Section title="Хэрэглэгч">
-          <Row label="Нэр" value={order.user.name ?? "—"} />
-          <Row label="Имэйл" value={order.user.email} />
+          <Row label="Нэр" value={order.user?.name ?? "Зочин"} />
+          <Row label="Имэйл" value={order.user?.email ?? "Зочин"} />
         </Section>
 
         <Section title="Төлбөр (QPay)">
@@ -101,14 +122,34 @@ export default async function AdminOrderDetailPage({
             <Row label="Алдаа" value={order.fulfillment.errorMessage} />
           )}
         </Section>
+
+        <Section title="SMS">
+          <Row label="Төлөв" value={order.smsStatus} />
+          <Row
+            label="Илгээсэн"
+            value={
+              order.smsSentAt
+                ? new Date(order.smsSentAt).toLocaleString("mn-MN")
+                : "—"
+            }
+          />
+          {order.smsErrorMessage && (
+            <Row label="Алдаа" value={order.smsErrorMessage} />
+          )}
+          {order.fulfillment?.cardCode && order.smsStatus !== "SENT" && (
+            <div className="pt-2">
+              <RetrySmsButton orderId={order.id} />
+            </div>
+          )}
+        </Section>
       </div>
 
       {canRetry && (
         <div className="mt-8 rounded-xl border border-border bg-white p-5">
           <h3 className="font-semibold">Дахин оролдох</h3>
           <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Төлбөр төлөгдсөн боловч код хүргэгдээгүй бол дахин Reloadly-ээр
-            захиална.
+            Төлбөр төлөгдсөн боловч код хүргэгдээгүй бол Reloadly хүргэлтийг
+            үргэлжлүүлж эсвэл дахин оролдоно.
           </p>
           <RetryFulfillmentButton orderId={order.id} />
         </div>

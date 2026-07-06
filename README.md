@@ -60,16 +60,22 @@ Open [http://localhost:3000](http://localhost:3000).
 | `QPAY_PASSWORD` | QPay merchant password |
 | `QPAY_INVOICE_CODE` | QPay invoice code |
 | `QPAY_CALLBACK_URL` | Webhook URL for payment notifications |
+| `NEXT_PUBLIC_APP_URL` | Public HTTPS app URL used for secure order links |
+| `ADMIN_EMAILS` | Comma-separated emails allowed into `/admin` |
+| `ALLOW_PUBLIC_REGISTRATION` | Keep `false` in production unless creating an admin user |
+| `ALLOW_TEST_PAYMENT` | Keep `false` in production |
+| `NEXT_PUBLIC_ENABLE_TEST_PAYMENT` | Keep `false` in production |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | SMS provider credentials, if Twilio is used |
 
 ## Order Flow
 
-1. User registers / logs in
-2. Selects a gift card product
-3. System creates order + QPay invoice with QR code
+1. User selects a gift card product and enters a phone number
+2. System creates order + secure guest order link
+3. System creates QPay invoice with QR code
 4. User scans QR and pays via bank app
 5. QPay webhook confirms payment
 6. System places order on Reloadly API
-7. Card code is delivered to user on order page
+7. Card code is delivered by SMS and shown on the secure order page
 
 ## Project Structure
 
@@ -102,8 +108,13 @@ src/
 - [ ] Switch `RELOADLY_ENV` to `live` and fund Reloadly wallet
 - [ ] Switch QPay to production credentials
 - [ ] Set `QPAY_CALLBACK_URL` to production HTTPS URL
+- [ ] Set `NEXT_PUBLIC_APP_URL` and `NEXTAUTH_URL` to the production HTTPS URL
+- [ ] Set `ALLOW_TEST_PAYMENT=false` and `NEXT_PUBLIC_ENABLE_TEST_PAYMENT=false`
+- [ ] Set `ALLOW_PUBLIC_REGISTRATION=false` after admin setup
+- [ ] Add `ADMIN_EMAILS` for admin panel access
 - [ ] Generate a strong `NEXTAUTH_SECRET`
 - [ ] Set up production PostgreSQL (e.g. Neon, Supabase, Railway)
+- [ ] Run `npm run db:deploy` against the production database before launch
 - [ ] Configure domain topup.mn with HTTPS
 
 ## License

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
@@ -38,12 +37,6 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-10 sm:py-16">
       <h1 className="text-2xl font-bold text-center">Нэвтрэх</h1>
-      <p className="mt-2 text-center text-sm text-muted-foreground">
-        Бүртгэлгүй юу?{" "}
-        <Link href="/register" className="text-primary font-medium hover:underline">
-          Бүртгүүлэх
-        </Link>
-      </p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         {error && (

@@ -2,11 +2,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatMnt } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 const STATUS_LABELS: Record<string, string> = {
   PENDING_PAYMENT: "Төлбөр хүлээгдэж байна",
   PAID: "Төлөгдсөн",
   FULFILLING: "Код бэлтгэж байна",
   DELIVERED: "Хүргэгдсэн",
+  FULFILLMENT_FAILED: "Код хүргэлт амжилтгүй",
   FAILED: "Амжилтгүй",
   EXPIRED: "Хугацаа дууссан",
   CANCELLED: "Цуцлагдсан",
@@ -39,6 +42,8 @@ export default async function AdminOrdersPage() {
                 <th className="px-4 py-3 font-medium">Бүтээгдэхүүн</th>
                 <th className="px-4 py-3 font-medium">Төлөв</th>
                 <th className="px-4 py-3 font-medium">Төлбөр</th>
+                <th className="px-4 py-3 font-medium">Reloadly</th>
+                <th className="px-4 py-3 font-medium">SMS</th>
                 <th className="px-4 py-3 font-medium text-right">Дүн</th>
               </tr>
             </thead>
@@ -57,7 +62,7 @@ export default async function AdminOrdersPage() {
                     {new Date(order.createdAt).toLocaleString("mn-MN")}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {order.user.email}
+                    {order.user?.email ?? order.phone}
                   </td>
                   <td className="px-4 py-3">
                     {order.items[0]?.product.name ?? "—"}
@@ -67,6 +72,12 @@ export default async function AdminOrdersPage() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {order.payment?.status ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {order.fulfillment?.status ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {order.smsStatus}
                   </td>
                   <td className="px-4 py-3 text-right font-medium">
                     {formatMnt(order.totalMnt)}

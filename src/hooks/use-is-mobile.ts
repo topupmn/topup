@@ -1,17 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
-const MOBILE_UA =
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i;
+const MOBILE_QUERY = "(max-width: 767px)";
+
+function subscribe(callback: () => void) {
+  const mediaQuery = window.matchMedia(MOBILE_QUERY);
+  mediaQuery.addEventListener("change", callback);
+
+  return () => mediaQuery.removeEventListener("change", callback);
+}
+
+function getSnapshot() {
+  return window.matchMedia(MOBILE_QUERY).matches;
+}
+
+function getServerSnapshot() {
+  return false;
+}
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const ua = navigator.userAgent;
-    setIsMobile(MOBILE_UA.test(ua));
-  }, []);
-
-  return isMobile;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

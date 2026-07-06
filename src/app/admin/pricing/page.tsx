@@ -1,5 +1,7 @@
 import { PricingOverview } from "@/components/admin/pricing-overview";
 
+export const dynamic = "force-dynamic";
+
 export default function AdminPricingPage() {
   return (
     <div>

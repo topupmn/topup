@@ -22,6 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
   PAID: "Төлбөр төлөгдсөн",
   FULFILLING: "Код бэлтгэж байна",
   DELIVERED: "Хүргэгдсэн",
+  FULFILLMENT_FAILED: "Код хүргэлт саатсан",
   FAILED: "Амжилтгүй",
   EXPIRED: "Хугацаа дууссан",
   CANCELLED: "Цуцлагдсан",

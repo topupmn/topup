@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { formatMnt } from "@/lib/utils";
 import { ToggleProductButton } from "@/components/admin/toggle-product-button";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminProductsPage() {
   const products = await prisma.product.findMany({
     orderBy: [{ brand: "asc" }, { priceMnt: "asc" }],

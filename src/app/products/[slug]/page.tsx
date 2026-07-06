@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { BRANDS } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
+import { applyReloadlyBalanceAvailability } from "@/lib/reloadly-balance";
 import { ProductGrid } from "@/components/products/product-grid";
+
+export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -22,6 +25,8 @@ export default async function BrandProductsPage({ params }: Props) {
     },
     orderBy: { priceMnt: "asc" },
   });
+  const productsWithAvailability =
+    await applyReloadlyBalanceAvailability(products);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
@@ -35,7 +40,7 @@ export default async function BrandProductsPage({ params }: Props) {
           </p>
         </div>
       ) : (
-        <ProductGrid products={products} />
+        <ProductGrid products={productsWithAvailability} />
       )}
     </div>
   );

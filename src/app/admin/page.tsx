@@ -3,11 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { formatMnt } from "@/lib/utils";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 const STATUS_LABELS: Record<string, string> = {
   PENDING_PAYMENT: "Төлбөр хүлээгдэж байна",
   PAID: "Төлөгдсөн",
   FULFILLING: "Код бэлтгэж байна",
   DELIVERED: "Хүргэгдсэн",
+  FULFILLMENT_FAILED: "Код хүргэлт амжилтгүй",
   FAILED: "Амжилтгүй",
   EXPIRED: "Хугацаа дууссан",
   CANCELLED: "Цуцлагдсан",
@@ -60,10 +63,14 @@ export default async function AdminDashboardPage() {
         <StatCard label="Идэвхтэй бүтээгдэхүүн" value={String(productCount)} />
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+      <div className="mt-8 grid gap-4 sm:grid-cols-4">
         <MiniStat label="Хүлээгдэж буй" value={statusMap.PENDING_PAYMENT ?? 0} />
-        <MiniStat label="Амжилтгүй" value={statusMap.FAILED ?? 0} />
         <MiniStat label="Бэлтгэж буй" value={statusMap.FULFILLING ?? 0} />
+        <MiniStat
+          label="Код алдаа"
+          value={statusMap.FULFILLMENT_FAILED ?? 0}
+        />
+        <MiniStat label="Амжилтгүй" value={statusMap.FAILED ?? 0} />
       </div>
 
       <PricingOverview compact />
@@ -99,7 +106,7 @@ export default async function AdminDashboardPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {order.user.email}
+                      {order.user?.email ?? order.email ?? order.phone}
                     </td>
                     <td className="px-4 py-3">
                       {order.items[0]?.product.name ?? "—"}

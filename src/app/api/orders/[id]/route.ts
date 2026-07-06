@@ -2,23 +2,22 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { checkQPayPayment, isQPayPaymentComplete, parseQPayBankUrls } from "@/lib/qpay";
+import { parseQPayBankUrls } from "@/lib/qpay";
+import { processQPayPaymentReference } from "@/lib/qpay-callback";
 import { fulfillOrder } from "@/lib/fulfillment";
+import { verifyGuestAccessToken } from "@/lib/guest-token";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Нэвтэрнэ үү" }, { status: 401 });
-    }
-
     const { id } = await params;
+    const token = new URL(request.url).searchParams.get("token");
 
-    const order = await prisma.order.findFirst({
-      where: { id, userId: session.user.id },
+    const order = await prisma.order.findUnique({
+      where: { id },
       include: {
         items: { include: { product: true } },
         payment: true,
@@ -26,7 +25,12 @@ export async function GET(
       },
     });
 
-    if (!order) {
+    if (
+      !order ||
+      (order.userId
+        ? order.userId !== session?.user?.id
+        : !verifyGuestAccessToken(token ?? "", order.guestAccessTokenHash))
+    ) {
       return NextResponse.json({ error: "Захиалга олдсонгүй" }, { status: 404 });
     }
 
@@ -34,22 +38,29 @@ export async function GET(
       order.status === "PENDING_PAYMENT" &&
       order.payment?.qpayInvoiceId
     ) {
-      const checkResult = await checkQPayPayment(order.payment.qpayInvoiceId);
-      if (isQPayPaymentComplete(checkResult)) {
-        await prisma.payment.update({
-          where: { id: order.payment.id },
-          data: { status: "PAID", paidAt: new Date() },
-        });
-        await prisma.order.update({
+      const paymentResult = await processQPayPaymentReference(
+        order.payment.qpayInvoiceId
+      );
+
+      if (
+        paymentResult.status === "paid" ||
+        paymentResult.status === "already_processed"
+      ) {
+        const refreshed = await prisma.order.findUnique({
           where: { id: order.id },
-          data: { status: "PAID" },
+          include: {
+            items: { include: { product: true } },
+            payment: true,
+            fulfillment: true,
+          },
         });
-        order.status = "PAID";
-        order.payment.status = "PAID";
+        if (refreshed) {
+          Object.assign(order, refreshed);
+        }
       }
     }
 
-    if (order.status === "PAID" && !order.fulfillment) {
+    if (order.status === "PAID" && order.payment?.status === "PAID") {
       await fulfillOrder(order.id);
       const refreshed = await prisma.order.findFirst({
         where: { id: order.id },
@@ -64,10 +75,17 @@ export async function GET(
       }
     }
 
+    const subtotalMnt =
+      order.subtotalMnt > 0 ? order.subtotalMnt : order.totalMnt + order.discountMnt;
+
     return NextResponse.json({
       id: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
+      subtotalMnt,
+      discountMnt: order.discountMnt,
+      discountCode: order.discountCode,
+      discountPercent: order.discountPercent,
       totalMnt: order.totalMnt,
       product: order.items[0]?.product ?? null,
       payment: order.payment

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fulfillOrder } from "@/lib/fulfillment";
+import { verifyGuestAccessToken } from "@/lib/guest-token";
+import { forbidCrossSiteRequest } from "@/lib/request-security";
 
 function isTestPaymentAllowed() {
   return (
@@ -12,27 +14,32 @@ function isTestPaymentAllowed() {
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const crossSiteResponse = forbidCrossSiteRequest(request);
+  if (crossSiteResponse) return crossSiteResponse;
+
   if (!isTestPaymentAllowed()) {
     return NextResponse.json({ error: "Not available" }, { status: 403 });
   }
 
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Нэвтэрнэ үү" }, { status: 401 });
-    }
-
     const { id } = await params;
+    const token = new URL(request.url).searchParams.get("token");
 
-    const order = await prisma.order.findFirst({
-      where: { id, userId: session.user.id },
+    const order = await prisma.order.findUnique({
+      where: { id },
       include: { payment: true },
     });
 
-    if (!order) {
+    if (
+      !order ||
+      (order.userId
+        ? order.userId !== session?.user?.id
+        : !verifyGuestAccessToken(token ?? "", order.guestAccessTokenHash))
+    ) {
       return NextResponse.json({ error: "Захиалга олдсонгүй" }, { status: 404 });
     }
 
@@ -47,14 +54,24 @@ export async function POST(
       return NextResponse.json({ error: "Төлбөр олдсонгүй" }, { status: 400 });
     }
 
-    await prisma.payment.update({
-      where: { id: order.payment.id },
-      data: { status: "PAID", paidAt: new Date() },
-    });
+    const paymentId = order.payment.id;
 
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { status: "PAID" },
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: paymentId },
+        data: { status: "PAID", paidAt: new Date() },
+      });
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status: "PAID" },
+      });
+
+      await tx.fulfillment.upsert({
+        where: { orderId: order.id },
+        create: { orderId: order.id, status: "PENDING" },
+        update: { status: "PENDING", errorMessage: null },
+      });
     });
 
     await fulfillOrder(order.id);

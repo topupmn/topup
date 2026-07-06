@@ -75,6 +75,12 @@ export interface QPayInvoiceResponse {
   urls: QPayBankUrl[];
 }
 
+function buildQPayCallbackUrl(callbackUrl: string, senderInvoiceNo: string): string {
+  const url = new URL(callbackUrl);
+  url.searchParams.set("sender_invoice_no", senderInvoiceNo);
+  return url.toString();
+}
+
 export function parseQPayBankUrls(value: Prisma.JsonValue | null): QPayBankUrl[] {
   if (!value || !Array.isArray(value)) return [];
 
@@ -123,7 +129,7 @@ export async function createQPayInvoice(
       invoice_receiver_code: "terminal",
       invoice_description: request.description,
       amount: request.amount,
-      callback_url: callbackUrl,
+      callback_url: buildQPayCallbackUrl(callbackUrl, request.senderInvoiceNo),
     }),
   });
 
@@ -141,13 +147,28 @@ export async function createQPayInvoice(
 
 export interface QPayPaymentCheckResponse {
   count: number;
-  paid_amount: number;
+  paid_amount?: number | string;
   rows: {
     payment_id: string;
     payment_status: string;
-    payment_amount: number;
-    payment_date: string;
+    payment_amount: number | string;
+    trx_fee?: number | string;
+    payment_currency?: string;
+    payment_wallet?: string;
+    payment_type?: string;
+    payment_date?: string;
   }[];
+}
+
+export interface QPayPaymentValidation {
+  isComplete: boolean;
+  reason:
+    | "not_paid"
+    | "missing_paid_amount"
+    | "amount_mismatch"
+    | "missing_paid_row"
+    | "paid";
+  paidAmountMnt: number;
 }
 
 export async function checkQPayPayment(
@@ -162,7 +183,14 @@ export async function checkQPayPayment(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ object_type: "INVOICE", object_id: invoiceId }),
+    body: JSON.stringify({
+      object_type: "INVOICE",
+      object_id: invoiceId,
+      offset: {
+        page_number: 1,
+        page_limit: 100,
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -173,8 +201,51 @@ export async function checkQPayPayment(
   return response.json();
 }
 
-export function isQPayPaymentComplete(
-  result: QPayPaymentCheckResponse
-): boolean {
-  return result.count > 0 && result.paid_amount > 0;
+function parseMntToMinorUnits(value: number | string | undefined): number | null {
+  if (value == null) return null;
+
+  const text =
+    typeof value === "number" ? value.toFixed(2) : value.trim().replace(/,/g, "");
+  if (!/^\d+(\.\d{1,2})?$/.test(text)) return null;
+
+  const [whole, fraction = ""] = text.split(".");
+  return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+}
+
+export function validateQPayPaymentComplete(
+  result: QPayPaymentCheckResponse,
+  expectedAmountMnt: number
+): QPayPaymentValidation {
+  const expectedMinor = expectedAmountMnt * 100;
+
+  if (result.count <= 0 || result.rows.length === 0) {
+    return { isComplete: false, reason: "not_paid", paidAmountMnt: 0 };
+  }
+
+  const paidAmountMinor = parseMntToMinorUnits(result.paid_amount);
+  if (paidAmountMinor == null) {
+    return { isComplete: false, reason: "missing_paid_amount", paidAmountMnt: 0 };
+  }
+
+  const paidAmountMnt = paidAmountMinor / 100;
+  if (paidAmountMinor !== expectedMinor) {
+    return { isComplete: false, reason: "amount_mismatch", paidAmountMnt };
+  }
+
+  const hasPaidRow = result.rows.some((row) => {
+    const rowAmountMinor = parseMntToMinorUnits(row.payment_amount);
+    const currencyMatches = !row.payment_currency || row.payment_currency === "MNT";
+
+    return (
+      row.payment_status === "PAID" &&
+      currencyMatches &&
+      rowAmountMinor === expectedMinor
+    );
+  });
+
+  if (!hasPaidRow) {
+    return { isComplete: false, reason: "missing_paid_row", paidAmountMnt };
+  }
+
+  return { isComplete: true, reason: "paid", paidAmountMnt };
 }

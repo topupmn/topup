@@ -5,6 +5,7 @@ const NAV = [
   { href: "/admin", label: "Хяналтын самбар" },
   { href: "/admin/orders", label: "Захиалгууд" },
   { href: "/admin/products", label: "Бүтээгдэхүүн" },
+  { href: "/admin/discount-codes", label: "Хөнгөлөлт" },
   { href: "/admin/pricing", label: "Ханш, үнэ" },
 ];
 

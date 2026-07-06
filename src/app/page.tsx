@@ -2,6 +2,8 @@ import { getBrandsWithImages } from "@/lib/brands";
 import { BrandCard } from "@/components/products/brand-card";
 import { ButtonLink } from "@/components/ui/button";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const brands = await getBrandsWithImages();
 
@@ -22,35 +24,20 @@ export default async function HomePage() {
           <ButtonLink href="/products" className="px-8">
             Карт худалдан авах
           </ButtonLink>
-          <ButtonLink href="/register" variant="secondary" className="px-8">
-            Бүртгүүлэх
-          </ButtonLink>
         </div>
       </section>
 
       <section className="border-t border-border bg-white">
         <div className="mx-auto max-w-5xl px-4 py-12 sm:py-16">
           <h2 className="text-xl sm:text-2xl font-semibold text-center mb-8 sm:mb-10">
-            Дэмжигдсэн платформууд
+            Хэрхэн ашиглах вэ?
           </h2>
-          <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-3">
-            {brands.map((brand) => (
-              <BrandCard key={brand.id} brand={brand} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-5xl px-4 py-12 sm:py-16">
-        <h2 className="text-xl sm:text-2xl font-semibold text-center mb-8 sm:mb-10">
-          Хэрхэн ажилладаг вэ?
-        </h2>
-        <div className="grid gap-8 sm:grid-cols-3">
+          <div className="grid gap-8 sm:grid-cols-3">
           {[
             {
               step: "1",
-              title: "Бүртгүүлэх",
-              desc: "Бүртгэл үүсгээд нэвтэрнэ үү",
+              title: "Карт сонгох",
+              desc: "Та авах картаа сонгоод Утасны дугаараа оруулна уу",
             },
             {
               step: "2",
@@ -60,7 +47,7 @@ export default async function HomePage() {
             {
               step: "3",
               title: "Код авах",
-              desc: "Төлбөр баталгаажмагц код шууд ирнэ",
+              desc: "Төлбөр баталгаажмагц код дэлгэц дээр гарах тул browser хаахгүй байна уу",
             },
           ].map((item) => (
             <div key={item.step} className="text-center">
@@ -71,6 +58,20 @@ export default async function HomePage() {
               <p className="mt-2 text-sm text-muted-foreground">{item.desc}</p>
             </div>
           ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border bg-background">
+        <div className="mx-auto max-w-5xl px-4 py-12 sm:py-16">
+          <h2 className="text-xl sm:text-2xl font-semibold text-center mb-8 sm:mb-10">
+            Тоглоомын картууд
+          </h2>
+          <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-3">
+            {brands.map((brand) => (
+              <BrandCard key={brand.id} brand={brand} />
+            ))}
+          </div>
         </div>
       </section>
     </div>
