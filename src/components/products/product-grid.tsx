@@ -27,6 +27,7 @@ interface Product {
 export function ProductGrid({ products }: { products: Product[] }) {
   const router = useRouter();
   const [discountCodes, setDiscountCodes] = useState<Record<string, string>>({});
+  const [discountErrors, setDiscountErrors] = useState<Record<string, string>>({});
   const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>({});
   const [phoneErrors, setPhoneErrors] = useState<Record<string, string>>({});
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
     }
 
     setPhoneErrors((errors) => ({ ...errors, [productId]: "" }));
+    setDiscountErrors((errors) => ({ ...errors, [productId]: "" }));
 
     try {
       setLoadingProductId(productId);
@@ -67,6 +69,18 @@ export function ProductGrid({ products }: { products: Product[] }) {
       const data = await res.json();
 
       if (!res.ok) {
+        if (
+          typeof data.error === "string" &&
+          data.error.includes("Хөнгөлөлтийн код")
+        ) {
+          setDiscountCodes((codes) => ({ ...codes, [productId]: "" }));
+          setDiscountErrors((errors) => ({
+            ...errors,
+            [productId]: "Хөнгөлөлтийн код буруу",
+          }));
+          return;
+        }
+
         alert(data.error ?? "Алдаа гарлаа");
         return;
       }
@@ -149,15 +163,30 @@ export function ProductGrid({ products }: { products: Product[] }) {
                   <span className="font-medium">Хөнгөлөлтийн код</span>
                   <input
                     value={discountCodes[product.id] ?? ""}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setDiscountCodes((codes) => ({
                         ...codes,
                         [product.id]: e.target.value.toUpperCase(),
-                      }))
-                    }
+                      }));
+                      if (discountErrors[product.id]) {
+                        setDiscountErrors((errors) => ({
+                          ...errors,
+                          [product.id]: "",
+                        }));
+                      }
+                    }}
                     placeholder="Код байвал оруулна уу"
-                    className="mt-1.5 w-full rounded-lg border border-border px-3 py-2.5 uppercase min-h-11"
+                    className={`mt-1.5 w-full rounded-lg border px-3 py-2.5 uppercase min-h-11 ${
+                      discountErrors[product.id]
+                        ? "border-red-300 focus:ring-red-200"
+                        : "border-border"
+                    }`}
                   />
+                  {discountErrors[product.id] && (
+                    <p className="mt-1 text-xs text-red-600" role="alert">
+                      {discountErrors[product.id]}
+                    </p>
+                  )}
                 </label>
               </>
             )}

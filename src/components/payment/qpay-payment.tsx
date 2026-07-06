@@ -66,9 +66,25 @@ export function QPayPayment({
                 key={bank.name}
                 href={bank.link}
                 referrerPolicy="no-referrer"
-                className="flex min-h-12 items-center justify-center rounded-lg border border-border bg-white px-4 py-3 text-sm font-medium hover:bg-accent transition-colors active:scale-[0.98]"
+                className="grid min-h-12 grid-cols-[2rem_1fr_2rem] items-center rounded-lg border border-border bg-white px-4 py-3 text-sm font-medium hover:bg-accent transition-colors active:scale-[0.98]"
               >
-                {bank.description ?? bank.name}
+                <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-muted">
+                  {bank.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={bank.logo}
+                      alt=""
+                      className="h-full w-full object-contain"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {(bank.description ?? bank.name).slice(0, 1)}
+                    </span>
+                  )}
+                </span>
+                <span className="text-center">{bank.description ?? bank.name}</span>
+                <span aria-hidden="true" />
               </a>
             ))}
           </div>
