@@ -1,8 +1,24 @@
 import { getBrandsWithImages } from "@/lib/brands";
 import { BrandCard } from "@/components/products/brand-card";
 import { ButtonLink } from "@/components/ui/button";
+import { createPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = createPageMetadata({
+  title: "topup.mn - Steam, Roblox, PUBG карт QPay-ээр авах",
+  description:
+    "Монголд тоглоомын карт хурдан авах сайт. Steam, Roblox, PUBG Mobile, Minecraft, PlayStation, Xbox, Nintendo картуудыг QPay-ээр төлж аваарай.",
+  path: "/",
+  keywords: [
+    "Steam карт авах",
+    "Roblox карт авах",
+    "PUBG UC авах",
+    "тоглоомын карт",
+    "QPay gift card",
+    "topup.mn",
+  ],
+});
 
 export default async function HomePage() {
   const brands = await getBrandsWithImages();

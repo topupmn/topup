@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { createPageMetadata } from "@/lib/seo";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -11,9 +12,20 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "topup.mn",
-  description:
-    "Steam, Roblox, PUBG Mobile, PUBG New State, Minecraft, Nintendo, Xbox, PlayStation зэрэг тоглоомын платформын карт QPay-ээр хурдан, найдвартай худалдан аваарай.",
+  ...createPageMetadata({
+    title: "topup.mn - Тоглоомын карт QPay-ээр авах",
+    description:
+      "Монголд Steam, Roblox, PUBG Mobile, Minecraft, PlayStation, Xbox, Nintendo зэрэг тоглоомын картуудыг QPay-ээр хурдан, хялбар худалдан аваарай.",
+    keywords: [
+      "тоглоомын карт",
+      "Steam карт",
+      "Roblox карт",
+      "PUBG UC",
+      "QPay тоглоомын карт",
+      "gift card Mongolia",
+    ],
+  }),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://topup.mn"),
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },

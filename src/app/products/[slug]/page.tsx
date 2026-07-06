@@ -1,13 +1,88 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BRANDS } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { applyReloadlyBalanceAvailability } from "@/lib/reloadly-balance";
 import { ProductGrid } from "@/components/products/product-grid";
+import { createPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+const BRAND_SEO: Record<
+  string,
+  { title: string; description: string; keywords: string[] }
+> = {
+  steam: {
+    title: "Steam карт авах - QPay төлбөртэй | topup.mn",
+    description:
+      "Монголд Steam gift card хурдан авах. Steam карт сонгоод утасны дугаараа оруулж QPay-ээр төлөөд кодоо аваарай.",
+    keywords: [
+      "Steam карт авах",
+      "Steam gift card Mongolia",
+      "Steam wallet code",
+      "QPay Steam card",
+    ],
+  },
+  roblox: {
+    title: "Roblox карт авах - Robux gift card | topup.mn",
+    description:
+      "Roblox gift card болон Robux карт Монголд QPay-ээр авах. Код төлбөр баталгаажмагц дэлгэц дээр гарна.",
+    keywords: [
+      "Roblox карт авах",
+      "Robux авах",
+      "Roblox gift card Mongolia",
+      "QPay Roblox",
+    ],
+  },
+  "pubg-mobile": {
+    title: "PUBG Mobile UC авах - QPay төлбөртэй | topup.mn",
+    description:
+      "PUBG Mobile UC карт Монголд QPay-ээр авах. UC кодоо хурдан, хялбар худалдан аваарай.",
+    keywords: [
+      "PUBG UC авах",
+      "PUBG Mobile UC Mongolia",
+      "PUBG карт",
+      "QPay PUBG UC",
+    ],
+  },
+  "pubg-new-state": {
+    title: "PUBG New State NC авах | topup.mn",
+    description:
+      "PUBG New State NC карт QPay-ээр авах. Монгол хэрэглэгчдэд зориулсан тоглоомын картын үйлчилгээ.",
+    keywords: ["PUBG New State NC", "NC авах", "PUBG New State карт"],
+  },
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const brand = BRANDS.find((b) => b.slug === slug);
+
+  if (!brand) {
+    return createPageMetadata({
+      title: "Бүтээгдэхүүн олдсонгүй | topup.mn",
+      path: `/products/${slug}`,
+    });
+  }
+
+  const seo = BRAND_SEO[brand.slug] ?? {
+    title: `${brand.name} карт авах | topup.mn`,
+    description: `${brand.name} тоглоомын карт QPay-ээр хурдан, хялбар худалдан аваарай.`,
+    keywords: [
+      `${brand.name} карт`,
+      `${brand.name} gift card Mongolia`,
+      "тоглоомын карт",
+      "QPay",
+    ],
+  };
+
+  return createPageMetadata({
+    ...seo,
+    path: `/products/${brand.slug}`,
+  });
 }
 
 export default async function BrandProductsPage({ params }: Props) {

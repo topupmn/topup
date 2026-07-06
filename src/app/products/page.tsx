@@ -1,7 +1,22 @@
 import { getBrandsWithImages } from "@/lib/brands";
 import { BrandCard } from "@/components/products/brand-card";
+import { createPageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = createPageMetadata({
+  title: "Тоглоомын картууд - Steam, Roblox, PUBG | topup.mn",
+  description:
+    "Steam, Roblox, PUBG Mobile, Minecraft, Nintendo, Xbox, PlayStation зэрэг тоглоомын картуудаас сонгоод QPay-ээр төлөх боломжтой.",
+  path: "/products",
+  keywords: [
+    "тоглоомын картууд",
+    "Steam gift card Mongolia",
+    "Roblox gift card Mongolia",
+    "PUBG UC Mongolia",
+    "QPay тоглоомын карт",
+  ],
+});
 
 export default async function ProductsPage() {
   const brands = await getBrandsWithImages();
