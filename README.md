@@ -66,6 +66,21 @@ Open [http://localhost:3000](http://localhost:3000).
 | `ALLOW_TEST_PAYMENT` | Keep `false` in production |
 | `NEXT_PUBLIC_ENABLE_TEST_PAYMENT` | Keep `false` in production |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | SMS provider credentials, if Twilio is used |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Telegram destination for hourly monitoring |
+| `MONITORING_CRON_SECRET` | Optional bearer token for manually testing the monitoring route |
+
+## Monitoring
+
+Vercel runs `/api/cron/hourly-status` every hour through `vercel.json`.
+The monitor checks the public website, database, QPay auth, and Reloadly wallet
+balance, then sends a plain-text status report to Telegram.
+
+For manual testing after deployment:
+
+```bash
+curl -H "Authorization: Bearer $MONITORING_CRON_SECRET" \
+  https://topup.mn/api/cron/hourly-status
+```
 
 ## Order Flow
 

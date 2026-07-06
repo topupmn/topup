@@ -145,6 +145,10 @@ export async function createQPayInvoice(
   };
 }
 
+export async function checkQPayHealth() {
+  await getQPayAccessToken();
+}
+
 export interface QPayPaymentCheckResponse {
   count: number;
   paid_amount?: number | string;
