@@ -1,5 +1,7 @@
 import { PricingOverview } from "@/components/admin/pricing-overview";
 import { prisma } from "@/lib/prisma";
+import { checkQPayHealth } from "@/lib/qpay";
+import { getReloadlyAccountBalance } from "@/lib/reloadly";
 import { formatMnt } from "@/lib/utils";
 import Link from "next/link";
 
@@ -16,27 +18,142 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Цуцлагдсан",
 };
 
-export default async function AdminDashboardPage() {
-  const [orderCounts, revenue, recentOrders, productCount] = await Promise.all([
-    prisma.order.groupBy({
-      by: ["status"],
-      _count: true,
+type SystemStatus = {
+  label: string;
+  value: string;
+  detail: string;
+  status: "ok" | "warn" | "error";
+};
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unknown error";
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error(`${label} timed out after ${timeoutMs / 1000}s`)),
+      timeoutMs
+    );
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+async function runStatusCheck(
+  label: string,
+  check: () => Promise<Omit<SystemStatus, "label" | "status">>
+): Promise<SystemStatus> {
+  try {
+    const result = await withTimeout(check(), 10_000, label);
+    return { label, status: "ok", ...result };
+  } catch (error) {
+    return {
+      label,
+      value: "Алдаа",
+      detail: errorMessage(error),
+      status: "error",
+    };
+  }
+}
+
+function getVercelStatus(): SystemStatus {
+  const env = process.env.VERCEL_ENV;
+  const commit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
+  const url = process.env.VERCEL_URL;
+
+  if (env === "production") {
+    return {
+      label: "Vercel production",
+      value: "Ready",
+      detail: commit ? `Commit ${commit}` : url ?? "Production deployment",
+      status: "ok",
+    };
+  }
+
+  if (env === "preview") {
+    return {
+      label: "Vercel production",
+      value: "Preview",
+      detail: commit ? `Commit ${commit}` : url ?? "Preview deployment",
+      status: "warn",
+    };
+  }
+
+  return {
+    label: "Vercel production",
+    value: "Local",
+    detail: "Vercel env биш",
+    status: "warn",
+  };
+}
+
+async function getAdminSystemStatuses(): Promise<SystemStatus[]> {
+  const [reloadly, neon, qpay] = await Promise.all([
+    runStatusCheck("Reloadly balance", async () => {
+      const balance = await getReloadlyAccountBalance();
+      const available = Math.max(0, balance.balance - (balance.frozenBalance ?? 0));
+
+      return {
+        value: `${available.toFixed(2)} ${balance.currencyCode}`,
+        detail:
+          balance.frozenBalance && balance.frozenBalance > 0
+            ? `Frozen ${balance.frozenBalance.toFixed(2)} ${balance.currencyCode}`
+            : "Available",
+      };
     }),
-    prisma.payment.aggregate({
-      where: { status: "PAID" },
-      _sum: { amountMnt: true },
-      _count: true,
+    runStatusCheck("Neon status", async () => {
+      await prisma.$queryRaw`SELECT 1`;
+      return {
+        value: "Connected",
+        detail: "Database query OK",
+      };
     }),
-    prisma.order.findMany({
-      take: 8,
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: { select: { email: true, name: true } },
-        items: { include: { product: true } },
-      },
+    runStatusCheck("QPay status", async () => {
+      await checkQPayHealth();
+      return {
+        value: "Connected",
+        detail: "Auth OK",
+      };
     }),
-    prisma.product.count({ where: { isActive: true } }),
   ]);
+
+  return [reloadly, getVercelStatus(), neon, qpay];
+}
+
+export default async function AdminDashboardPage() {
+  const [systemStatuses, orderCounts, revenue, recentOrders, productCount] =
+    await Promise.all([
+      getAdminSystemStatuses(),
+      prisma.order.groupBy({
+        by: ["status"],
+        _count: true,
+      }),
+      prisma.payment.aggregate({
+        where: { status: "PAID" },
+        _sum: { amountMnt: true },
+        _count: true,
+      }),
+      prisma.order.findMany({
+        take: 8,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: { select: { email: true, name: true } },
+          items: { include: { product: true } },
+        },
+      }),
+      prisma.product.count({ where: { isActive: true } }),
+    ]);
 
   const statusMap = Object.fromEntries(
     orderCounts.map((s) => [s.status, s._count])
@@ -46,6 +163,12 @@ export default async function AdminDashboardPage() {
     <div>
       <h1 className="text-2xl font-bold">Хяналтын самбар</h1>
       <p className="text-muted-foreground mt-1">Захиалга, төлбөр, бүтээгдэхүүн</p>
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {systemStatuses.map((status) => (
+          <SystemStatusCard key={status.label} status={status} />
+        ))}
+      </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -124,6 +247,30 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function SystemStatusCard({ status }: { status: SystemStatus }) {
+  const statusClasses = {
+    ok: "bg-success",
+    warn: "bg-amber-500",
+    error: "bg-danger",
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-white p-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">{status.label}</p>
+        <span
+          className={`h-2.5 w-2.5 rounded-full ${statusClasses[status.status]}`}
+          aria-label={status.status}
+        />
+      </div>
+      <p className="text-2xl font-bold mt-1">{status.value}</p>
+      <p className="mt-1 truncate text-xs text-muted-foreground" title={status.detail}>
+        {status.detail}
+      </p>
     </div>
   );
 }
