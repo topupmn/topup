@@ -56,6 +56,17 @@ const BRAND_SEO: Record<
       "PUBG New State NC карт QPay-ээр авах. Монгол хэрэглэгчдэд зориулсан тоглоомын картын үйлчилгээ.",
     keywords: ["PUBG New State NC", "NC авах", "PUBG New State карт"],
   },
+  "riot-access-usa": {
+    title: "Riot Access USA карт авах | VALORANT | topup.mn",
+    description:
+      "Riot Access USA карт QPay-ээр авах. VALORANT/Riot аккаунтын бүс таарах эсэхийг шалгана уу.",
+    keywords: [
+      "Valorant карт авах",
+      "Riot Access USA",
+      "Valorant points Mongolia",
+      "QPay Valorant",
+    ],
+  },
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

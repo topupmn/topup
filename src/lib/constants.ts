@@ -53,6 +53,13 @@ export const BRANDS = [
     slug: "playstation",
     matchPatterns: ["playstation"],
   },
+  {
+    id: "riot-access-usa",
+    name: "Riot Access USA",
+    description: "Riot / VALORANT карт (US)",
+    slug: "riot-access-usa",
+    matchPatterns: ["riot access"],
+  },
 ] as const;
 
 export type BrandId = (typeof BRANDS)[number]["id"];
@@ -74,7 +81,11 @@ export function matchReloadlyProduct(product: ReloadlyProductRef): BrandId | nul
 
   for (const brand of BRANDS) {
     if (!("matchPatterns" in brand) || !brand.matchPatterns) continue;
-    if (brand.matchPatterns.some((pattern) => brandLower.includes(pattern))) {
+    if (
+      brand.matchPatterns.some(
+        (pattern) => brandLower.includes(pattern) || nameLower.includes(pattern)
+      )
+    ) {
       return brand.id;
     }
   }
@@ -96,6 +107,10 @@ export function formatProductLabel(brandId: BrandId, usd: number): string {
 
   if (brandId === "pubg-new-state") {
     return `PUBG New State ${usd} NC`;
+  }
+
+  if (brandId === "riot-access-usa") {
+    return `Riot Access USA $${usd}`;
   }
 
   return `${brand.name} $${usd}`;
