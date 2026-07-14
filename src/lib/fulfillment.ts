@@ -8,6 +8,17 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown fulfillment error";
 }
 
+function buildReloadlyCustomIdentifier(order: {
+  orderNumber: string;
+  fulfillment?: { errorMessage: string | null; reloadlyTransactionId: string | null } | null;
+}) {
+  if (!order.fulfillment?.errorMessage || order.fulfillment.reloadlyTransactionId) {
+    return order.orderNumber;
+  }
+
+  return `${order.orderNumber}-${Date.now().toString(36).toUpperCase()}`;
+}
+
 async function markFulfillmentFailed(orderId: string, errorMessage: string) {
   await prisma.$transaction(async (tx) => {
     await tx.fulfillment.upsert({
@@ -101,7 +112,7 @@ export async function fulfillOrder(orderId: string) {
         countryCode: item.product.countryCode,
         quantity: 1,
         unitPrice: item.product.denominationUsd,
-        customIdentifier: order.orderNumber,
+        customIdentifier: buildReloadlyCustomIdentifier(order),
         senderName: "topup.mn",
         recipientEmail:
           order.email ??
