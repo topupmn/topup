@@ -8,15 +8,28 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown fulfillment error";
 }
 
+function getRetryToken() {
+  return `${Date.now().toString(36)}${Math.random()
+    .toString(36)
+    .slice(2, 8)}`.toUpperCase();
+}
+
 function buildReloadlyCustomIdentifier(order: {
   orderNumber: string;
-  fulfillment?: { errorMessage: string | null; reloadlyTransactionId: string | null } | null;
+  fulfillment?: {
+    status: string;
+    errorMessage: string | null;
+    reloadlyTransactionId: string | null;
+  } | null;
 }) {
-  if (!order.fulfillment?.errorMessage || order.fulfillment.reloadlyTransactionId) {
+  if (
+    order.fulfillment?.reloadlyTransactionId ||
+    order.fulfillment?.status !== "FAILED"
+  ) {
     return order.orderNumber;
   }
 
-  return `${order.orderNumber}-${Date.now().toString(36).toUpperCase()}`;
+  return `R-${getRetryToken()}-${order.orderNumber.slice(-6)}`;
 }
 
 async function markFulfillmentFailed(orderId: string, errorMessage: string) {
@@ -103,16 +116,20 @@ export async function fulfillOrder(orderId: string) {
     });
   });
 
+  let reloadlyCustomIdentifier: string | null = null;
+
   try {
     let reloadlyTransactionId = order.fulfillment?.reloadlyTransactionId ?? null;
 
     if (!reloadlyTransactionId) {
+      reloadlyCustomIdentifier = buildReloadlyCustomIdentifier(order);
+
       const reloadlyOrder = await placeReloadlyOrder({
         productId: item.product.reloadlyId,
         countryCode: item.product.countryCode,
         quantity: 1,
         unitPrice: item.product.denominationUsd,
-        customIdentifier: buildReloadlyCustomIdentifier(order),
+        customIdentifier: reloadlyCustomIdentifier,
         senderName: "topup.mn",
         recipientEmail:
           order.email ??
@@ -160,6 +177,11 @@ export async function fulfillOrder(orderId: string) {
     }
   } catch (error) {
     console.error("Fulfillment error:", error);
-    await markFulfillmentFailed(orderId, getErrorMessage(error));
+    await markFulfillmentFailed(
+      orderId,
+      reloadlyCustomIdentifier
+        ? `${getErrorMessage(error)} | customIdentifier=${reloadlyCustomIdentifier}`
+        : getErrorMessage(error)
+    );
   }
 }
