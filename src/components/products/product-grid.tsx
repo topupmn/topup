@@ -97,7 +97,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
         const canPurchase = product.canPurchase !== false;
         const unavailableText =
           product.unavailableReason === "insufficient_balance"
-            ? "Үлдэгдэл хүрэлцэхгүй"
+            ? "Идэвхгүй"
             : "Түр боломжгүй";
 
         return (
@@ -203,12 +203,6 @@ export function ProductGrid({ products }: { products: Product[] }) {
                     ? "Худалдан авах"
                     : "Сонгох >"}
             </Button>
-            {!canPurchase &&
-              product.unavailableReason === "insufficient_balance" && (
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  Reloadly үлдэгдэл бага байна
-                </p>
-              )}
           </div>
         );
       })}
