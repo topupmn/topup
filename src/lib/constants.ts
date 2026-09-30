@@ -1,10 +1,24 @@
 export const BRANDS = [
   {
+    id: "playstation",
+    name: "PlayStation",
+    description: "PlayStation Store карт (US)",
+    slug: "playstation",
+    matchPatterns: ["playstation"],
+  },
+  {
     id: "steam",
     name: "Steam",
     description: "PC тоглоомын платформ",
     slug: "steam",
     matchPatterns: ["steam"],
+  },
+  {
+    id: "nintendo",
+    name: "Nintendo",
+    description: "Nintendo eShop карт",
+    slug: "nintendo",
+    matchPatterns: ["nintendo"],
   },
   {
     id: "roblox",
@@ -33,25 +47,11 @@ export const BRANDS = [
     matchPatterns: ["minecraft"],
   },
   {
-    id: "nintendo",
-    name: "Nintendo",
-    description: "Nintendo eShop карт",
-    slug: "nintendo",
-    matchPatterns: ["nintendo"],
-  },
-  {
     id: "xbox",
     name: "Xbox",
     description: "Xbox карт",
     slug: "xbox",
     matchPatterns: ["xbox"],
-  },
-  {
-    id: "playstation",
-    name: "PlayStation",
-    description: "PlayStation Store карт (US)",
-    slug: "playstation",
-    matchPatterns: ["playstation"],
   },
   {
     id: "riot-access-usa",
